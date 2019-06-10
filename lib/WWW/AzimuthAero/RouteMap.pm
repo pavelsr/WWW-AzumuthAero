@@ -1,5 +1,7 @@
 package WWW::AzimuthAero::RouteMap;
 
+# ABSTRACT: additional subroutines for unit testing
+
 =head1 SYNOPSIS
 
     my $az = WWW::AzimuthAero->new();

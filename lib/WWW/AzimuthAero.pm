@@ -1,5 +1,7 @@
 package WWW::AzimuthAero;
 
+# ABSTRACT: Parser for https://azimuth.aero/
+
 =head1 SYNOPSIS
 
     use WWW::AzimuthAero;

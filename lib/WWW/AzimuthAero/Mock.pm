@@ -1,5 +1,7 @@
 package WWW::AzimuthAero::Mock;
 
+# ABSTRACT: additional subroutines for unit testing
+
 =head1 SYNOPSIS
 
     perl -Ilib -e "use WWW::AzimuthAero::Mock; WWW::AzimuthAero::Mock->generate()"

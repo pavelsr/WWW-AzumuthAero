@@ -1,5 +1,7 @@
 package WWW::AzimuthAero::Utils;
 
+# ABSTRACT: functions that can be used outside WWW::AzimuthAero::* packages
+
 =head1 DESCRIPTION
 
     Some useful date manipulation and filtering functions

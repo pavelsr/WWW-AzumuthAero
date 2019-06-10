@@ -1,5 +1,9 @@
 #!/usr/bin/env perl
 
+package azimuth_aero;
+
+# ABSTRACT: CLI tool for getting lowest prices from https://azimuth.aero/
+
 =head1 SYNOPSIS
     
     azimuth_aero ROV LED 15.06.2019             # 15.06.2019 is max date
