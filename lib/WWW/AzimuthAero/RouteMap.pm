@@ -105,18 +105,34 @@ Amount of all routes
     
     perl -Ilib -MWWW::AzimuthAero -e 'my $x = WWW::AzimuthAero->new->route_map->route_map_iata; my $i = 0; $i+= scalar @$_ for values %$x; print $i;'
 
+Params:
+
+    cities 
+
+    perl -Ilib -MWWW::AzimuthAero -MData::Dumper -e 'my $x = WWW::AzimuthAero->new->route_map->route_map_iata('ROV', 'LED', 'KRR'); warn Dumper $x;'
+
 =cut
 
 sub route_map_iata {
-    my ($self) = @_;
+    my ($self, @cities ) = @_;
     my $res = {};
     while ( my ( $azo_code, $data ) = each( %{ $self->raw } ) ) {
         $res->{ $self->get_iata_by_azo($azo_code) } = [
             sort  { lc($a) cmp lc($b) }
-              map { $self->get_iata_by_azo($_) }
-              keys %{ $self->raw->{$azo_code}{ROUTES} }
+            map { $self->get_iata_by_azo($_) }
+            keys %{ $self->raw->{$azo_code}{ROUTES} }
         ];
     }
+    
+    if (@cities) {
+        for my $city (keys %$res) {
+           unless ( $city ~~ @cities ) {
+               delete $res->{$city} 
+           }
+        }
+    }
+    
+    
     return $res;
 }
 
