@@ -43,13 +43,21 @@ How to generate DOM samples for unit tests after git clone:
 
 See L<WWW::AzimuthAero::Mock> and L<Mojo::UserAgent::Mockable> for more details
 
+API urls that modules uses:
+
+https://booking.azimuth.aero/ (for fetching route map and initialize session)
+
+https://azimuth.aero/ru/flights?from=ROV&to=LED (for fetching schedule)
+
+https://booking.azimuth.aero/!/ROV/LED/19.06.2019/1-0-0/ (for fetching prices)
+
 =head1 TO-DO
 
-implement find_transits
++ implement find_transits
 
-Checking more than 1 transfer
++ Checking more than 1 transfer
 
-L<WWW::AzimuthAero/get_fares_schedule> get requests debug stat
++ debug output of L<WWW::AzimuthAero/get_fares_schedule> and others
 
 =cut
 
@@ -58,12 +66,14 @@ use warnings;
 use utf8;
 use feature 'say';
 use Carp;
+use List::Util qw/min/;
 
 use Mojo::DOM;
 use Mojo::UserAgent;
 
 use WWW::AzimuthAero::Utils qw(:all);
 use WWW::AzimuthAero::RouteMap;
+use WWW::AzimuthAero::Flight;
 
 use Data::Dumper;
 use Data::Dumper::AutoEncode;
@@ -72,15 +82,20 @@ use Data::Dumper::AutoEncode;
 
     use WWW::AzimuthAero;
     my $az = Azimuth->new();
+    # or my $az = Azimuth->new(ua_str => 'yandex-travel');
     
 =cut
 
 sub new {
-    my ( $self, $ua ) = @_;
-    $ua = Mojo::UserAgent->new() unless defined $ua;
+    my ( $self, %params ) = @_;
+    $params{ua_obj} = Mojo::UserAgent->new() unless defined $params{ua_obj};
+    $params{ua_str} =
+'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
+      unless defined $params{ua_str};
+    $params{ua_obj}->transactor->name( $params{ua_str} );
 
     # get cookies, otheerwise will be 403 error
-    my $req = $ua->get('https://booking.azimuth.aero/');
+    my $req = $params{ua_obj}->get('https://booking.azimuth.aero/');
 
     # get route map
     my $route_map = $req->res->dom->find('script')
@@ -88,7 +103,7 @@ sub new {
     $route_map = extract_js_glob_var( $route_map, 'data.routes' );
 
     bless {
-        ua        => $ua,
+        ua        => $params{ua_obj},
         route_map => WWW::AzimuthAero::RouteMap->new($route_map)
     }, $self;
 }
@@ -97,7 +112,7 @@ sub new {
 
 Return L<WWW::AzimuthAero::RouteMap> object
 
-    perl -Ilib -MWWW::AzimuthAero -MData::Dumper::AutoEncode -e 'my $x = WWW::AzimuthAero->new->route_map->raw; warn eDumper $x;'
+    perl -Ilib -MWWW::AzimuthAero -MData::Dumper::AutoEncode -e 'my $x = WWW::AzimuthAero->new->route_map; warn eDumper $x;'
 
 =cut
 
@@ -119,7 +134,8 @@ Return list of available dates in '%d.%m.%Y' format
 
 Method is useful for minimize amount of API requests
 
-If no available_to property set (like at https://azimuth.aero/ru/flights?from=ROV&to=PKV ) will return all dates in range
+If no available_to property set (like at https://azimuth.aero/ru/flights?from=ROV&to=PKV ) 
+will check for 2 months forward and return all dates in range
 
 =cut
 
@@ -127,7 +143,7 @@ If no available_to property set (like at https://azimuth.aero/ru/flights?from=RO
 
 sub get_schedule_dates {
     my ( $self, %params ) = @_;
-    
+
     confess "from is not defined" unless defined $params{from};
     confess "to is not defined"   unless defined $params{to};
 
@@ -146,17 +162,51 @@ sub get_schedule_dates {
             # $interval->{min}
             # $interval->{max}
             # $interval->{days}
-            push @dates, get_dates_from_dows(%$interval);
+            push @dates,
+              get_dates_from_dows(%$interval);    # to-do : check max_date
         }
+
+        # to-do: push from now only
+
         return sort_dates(@dates);
     }
     else {
         carp "No schedule available between "
           . $params{from} . " and "
           . $params{to}
-          . ", url : $url" if $params{v};
-        return get_dates_from_range( min => $params{min}, max => $params{max} );
+          . ", url : $url, most likely is transit route"
+          if $params{v};
+
+        return get_dates_from_range( min => $params{min}, max => $params{max} )
+          ;    # to-do : check max_date
     }
+}
+
+=head1 find_no_schedule
+
+Return hash with routes with no available schedule, presumably all transit routes.
+
+=cut
+
+sub find_no_schedule {
+    my ( $self, %params ) = @_;
+
+    my $iata_map = $self->route_map->route_map_iata;
+
+    my %res = ();
+    my $i;
+    while ( my ( $from, $cities ) = each(%$iata_map) ) {
+        for my $to (@$cities) {
+            my $url =
+              'https://azimuth.aero/ru/flights?from=' . $from . '&to=' . $to;
+            my $res = $self->{ua}->get($url)->res->json;
+            say $i;
+            $res{$from} = $to if ( ref( $res->{available_to} ) ne 'ARRAY' );
+            $i++;
+        }
+    }
+
+    return %res;
 }
 
 =head1 print_flights
@@ -171,81 +221,21 @@ sub get_schedule_dates {
 sub print_flights {
     my ( $self, @flights ) = @_;
     my $str;
-    
+
     for my $f (@flights) {
-        
+
         my $transfer_time = $f->{has_stops} ? $f->{flight_duration} : '';
-        
-        $str.= $f->{fares}{lowest} . "\t"
+
+        $str .=
+            $f->{fares}{lowest} . "\t"
           . $f->{date} . "\t"
           . $f->{from} . '->'
           . $f->{to}
           . $transfer_time
-          . "\n                                                                                                                                                                                                                          "
+          . "\n                                                                                                                                                                                                                          ";
     }
-    
+
     return $str;
-}
-
-sub _get_fares {
-    my ( $self, $dom ) = @_;
-    my $fares          = {};
-    my @possible_fares = qw/legkiy vygodnyy optimalnyy svobodnyy/;
-
-    for my $class (@possible_fares) {
-        my $tdom =
-          $dom->at( 'div.td_fare.' . $class . ' span.sf-price__value.rub' );
-        if ($tdom) {
-            my $f = $tdom->text;
-            $f =~ s/\D+//g;
-            $fares->{$class} = $f;
-
-            # $fares->{lowest} = $f if ( $f < $fares->{lowest} );
-        }
-    }
-
-    $fares->{lowest} = 99999;
-    for my $fare ( values %$fares ) {
-        $fares->{lowest} = $fare if ( $fare < $fares->{lowest} );
-    }
-
-    return $fares;
-}
-
-# leave only digits and :
-sub _fix_time {
-    my ( $self, $time ) = @_;
-    $time =~ s/(?![\d:]).//g;
-    $time =~ s/[\r\n\t]//g;
-    return $time;
-}
-
-sub _get_flight_data {
-    my ( $self, $dom ) = @_;
-
-    # div.ts-flight_summary
-    my %stops_data;
-    if ( my $stops = $dom->at('div.ts-flight__duration div.ts-flight__stops') )
-    {
-        if ( $stops->text =~ /пересадк/ ) {
-            $stops_data{has_stops} = 1;
-            $stops_data{flight_duration} =
-              $dom->at('div.ts-flight__duration div.ts-flight__dur')->text;
-            $stops_data{flight_duration} =~ s/[\r\n\t]//g;
-            $stops_data{flight_duration} =~ s/^\s+//;
-            $stops_data{flight_duration} =~ s/\s+$//;
-        }
-    }
-
-    return {
-        arrival => $self->_fix_time(
-            $dom->at('div.ts-flight__arrival div.ts-flight__time')->text
-        ),
-        departure => $self->_fix_time(
-            $dom->at('div.ts-flight__deparure div.ts-flight__time')->text
-        ),
-        %stops_data
-    };
 }
 
 =head1 get
@@ -256,46 +246,9 @@ Cities are specified as IATA codes.
 
     $az->get( from => 'ROV', to => 'LED', date => '04.06.2019' );
 
-Return ARRAYref with flights data of hash with error like 
+Return ARRAYref with L<WWW::AzimuthAero::Flight> objects or hash with error like 
 
     { 'error' => 'No flights found' }
-
-Example output 
-
-    [
-        {
-            'date' => '16.06.2019',
-            'fares' => { 'lowest' => '5620', 'svobodnyy' => '5620' },
-            'to' => 'KLF',
-            'from' => 'ROV',
-            'flight' => { 'arrival' => '11:35', 'departure' => '10:00' }
-        },from is not defined
-        ...
-    ];
-
-Example of output if flight has transfers :
-
-[
-      {
-        'date' => '12.06.2019',
-        'fares' => {
-                     'lowest' => '6930',
-                     'optimalnyy' => '8430',
-                     'svobodnyy' => '16360',
-                     'vygodnyy' => '6930'
-                   },
-        'to' => 'PKV',
-        'flight' => {
-                      'flight_duration' => '5ч 35м',
-                      'has_stops' => 1,
-                      'departure' => '07:45',
-                      'arrival' => '13:20'
-                    },
-        'from' => 'ROV'
-      }
-    ];
-    
-( flight property will have has_stops option )
 
 =cut
 
@@ -321,13 +274,49 @@ sub get {
 
         for my $flight_dom ( $target_dom->find('div.sf-flight-block')->each ) {
 
-            my $fhash = {
-                flight => $self->_get_flight_data($flight_dom),
-                fares  => $self->_get_fares($flight_dom),
-                %params
-            };
+            my $flight = WWW::AzimuthAero::Flight->new(
+                from => $params{from},
+                to   => $params{to},
+                date => $params{date}
+            );
 
-            push @res, $fhash;
+            my $stops_css = $flight_dom->at('div.ts-flight__duration div.ts-flight__stops');
+            
+            if ($stops_css) {
+                if ( $stops_css->text =~ /пересадк/ ) {
+                    $flight->has_stops(1);
+                    
+                    $flight->duration(
+                        fix_html_string $flight_dom->at('div.ts-flight__duration div.ts-flight__dur')->text
+                    );
+                }
+            }
+
+            $flight->arrival(
+                fix_html_string $flight_dom->at('div.ts-flight__arrival div.ts-flight__time')->text );
+                
+            $flight->departure(
+                fix_html_string $flight_dom->at('div.ts-flight__deparure div.ts-flight__time')->text );
+            
+            $flight->flight_num(
+                fix_html_string $flight_dom->at('div.ts-flight__num')->text );
+
+            my @possible_fares = qw/legkiy vygodnyy optimalnyy svobodnyy/;
+
+            my $fares = {};
+            for my $class (@possible_fares) {
+                my $tdom = $flight_dom->at(
+                    'div.td_fare.' . $class . ' span.sf-price__value.rub' );
+                if ($tdom) {
+                    my $f = $tdom->text;
+                    $f =~ s/\D+//g;    # remove all non-digits
+                    $fares->{$class} = $f;
+                }
+            }
+
+            $fares->{lowest} = min values %$fares;
+            $flight->fares($fares);
+            push @res, $flight;
 
         }
 
@@ -370,12 +359,17 @@ sub get_fares_schedule {
     # warn "Dates : ".Dumper @available_dates;
 
     my @fares;
-    # say scalar @available_dates . ' days will be checked' if $params{progress_bar};
+
+# say scalar @available_dates . ' days will be checked' if $params{progress_bar};
 
     for my $i ( 0 .. $#available_dates ) {
 
         my $date_str = $available_dates[$i];
-        say $params{from}.'->'.$params{to}.' : '.($i+1). '/' . scalar @available_dates if $params{progress_bar};
+        say $params{from} . '->'
+          . $params{to} . ' : '
+          . ( $i + 1 ) . '/'
+          . scalar @available_dates
+          if $params{progress_bar};
 
         my $flights = $self->get(
             from => $params{from},
@@ -389,11 +383,9 @@ sub get_fares_schedule {
         push @fares, @$flights
           if ( ref($flights) eq 'ARRAY' );
     }
-    
-    
 
-    # say scalar @fares . ' days of direct flights with available tickets found' if $params{progress_bar};
-      
+# say scalar @fares . ' days of direct flights with available tickets found' if $params{progress_bar};
+
     return sort { $a->{date} cmp $b->{date} } @fares;
 }
 
@@ -423,45 +415,53 @@ sub get_lowest_fares {
     my @fares = $self->get_fares_schedule(%params);
 
     if ( $params{check_neighbors} ) {
-            
-        my @from_neighbors = $self->route_map->get_neighbor_airports_iata( $params{from} );    
-        my @to_neighbors = $self->route_map->get_neighbor_airports_iata( $params{to} );
-    
-        # say 'Will check neighbor airports also : '.join("\t",@from_neighbors,@to_neighbors) if ($params{progress_bar});
-        say '== neighbours : '.join(" ", @from_neighbors, @to_neighbors);
-        
+
+        my @from_neighbors =
+          $self->route_map->get_neighbor_airports_iata( $params{from} );
+        my @to_neighbors =
+          $self->route_map->get_neighbor_airports_iata( $params{to} );
+
+# say 'Will check neighbor airports also : '.join("\t",@from_neighbors,@to_neighbors) if ($params{progress_bar});
+        say '== neighbours : ' . join( " ", @from_neighbors, @to_neighbors );
+
         for my $from2 (@from_neighbors) {
+
             # warn "from 2 : ".$from2;
-            push @fares, $self->get_fares_schedule(
+            push @fares,
+              $self->get_fares_schedule(
                 from         => $from2,
                 to           => $params{to},
                 min          => $params{min},
                 max          => $params{max},
                 progress_bar => $params{progress_bar},
-            );
+              );
         }
-        
+
         for my $to2 (@to_neighbors) {
-            push @fares, $self->get_fares_schedule(
+            push @fares,
+              $self->get_fares_schedule(
                 from         => $params{from},
                 to           => $to2,
                 min          => $params{min},
                 max          => $params{max},
                 progress_bar => $params{progress_bar},
-            );
+              );
         }
-        
+
     }
-    
+
     if ( $params{find_transits} ) {
-        
-        my $routes = $self->route_map->transfer_routes( from => $params{from}, to => $params{to} );
-            
+
+        my $routes = $self->route_map->transfer_routes(
+            from => $params{from},
+            to   => $params{to}
+        );
+
         # [ [ 'ROV', 'MOW', 'LED' ], [ 'ROV', 'KRR', 'LED' ] ]
         # to
         # [  { from => 'ROV', via => 'MOW', to => 'LED' }, ... ]
         my @flights = iata_pairwise($routes);
-        
+
         # process transit flights
         # for my $x (@flights) {
         #     push @fares, $self->get_fares_schedule_transit(
@@ -474,9 +474,9 @@ sub get_lowest_fares {
         #         max_delay_days  => $params{max_delay_days}
         #     );
         # }
-    
+
     }
-    
+
     return sort { $a->{fares}{lowest} <=> $b->{fares}{lowest} } @fares;
 
 }

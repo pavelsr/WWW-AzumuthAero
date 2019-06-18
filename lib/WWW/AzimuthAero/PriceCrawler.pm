@@ -8,12 +8,12 @@ use feature 'say';
 =head1 SYNOPSIS
 
     my $azo_price_crawler = WWW::AzimuthAero::PriceCrawler->new();
-    $azo_price_crawler->requests()
+    $azo_price_crawler->prepare_requests()
     
     
 =head1 DESCRIPTION
 
-    
+    Wrappper under L<WWW::AzimuthAero>
 
 =head1 new
 
@@ -23,11 +23,11 @@ See L<WWW::AzimuthAero/new>
 
 Return arrray of hashes with params (from, to, date) for WWW::AzimuthAero::get method
     
-    my @l = $azo_price_crawler->requests( max_date => '18.12.2019', fake => 1 );
+    my @l = $azo_price_crawler->prepare_requests( max_date => '18.12.2019', verbose => 1 );
 
 In fact, combines L<WWW::AzimuthAero::RouteMap/route_map_iata> and L<WWW::AzimuthAero/get_schedule_dates>
 
-Params
+=head2 Params
 
 max_date - '%d.%m.%Y' format, if no specified will looks forward for 2 months, default max_date of L<WWW::AzimuthAero/get_schedule_dates>
 

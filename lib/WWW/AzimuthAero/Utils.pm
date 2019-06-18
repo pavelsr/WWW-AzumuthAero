@@ -14,6 +14,7 @@ use feature 'say';
 use Carp;
 use Data::Dumper;
 
+
 use List::Util qw/uniq/;
 use JavaScript::V8;
 use DateTime;
@@ -31,6 +32,7 @@ our @EXPORT_OK = qw(
   sort_dates
   extract_js_glob_var
   iata_pairwise
+  fix_html_string
 );
 
 # TO-DO: to_dt and from_dt methods
@@ -123,14 +125,22 @@ sub get_dates_from_dows {
     return sort_dates(@res);
 }
 
+# This method used for filtering dates when no available_to property
+
 sub get_dates_from_range {
     my (%params) = @_;
 
     # confess "min date is not defined" unless defined $params{min};
-    confess "max date is not defined" unless defined $params{max};
+    # confess "max date is not defined" unless defined $params{max};
+    
+    my $dt_max =
+      ( defined $params{max} )
+      ? ( DateTime::Format::Strptime->new( pattern => '%d.%m.%Y' )
+          ->parse_datetime( $params{max} ) )
+      : ( DateTime->now->truncate( to => 'day' )->add( months => 2 ) );
 
-    my $dt_max = DateTime::Format::Strptime->new( pattern => '%d.%m.%Y' )
-      ->parse_datetime( $params{max} );
+    # my $dt_max = DateTime::Format::Strptime->new( pattern => '%d.%m.%Y' )
+      #->parse_datetime( $params{max} );
 
     # DateTime->now->truncate include max_day
     my $dt_min =
@@ -214,6 +224,25 @@ sub extract_js_glob_var {
     $context->eval( 'console_log(' . $var_name . ')' );
     undef $context;
     return $res;
+}
+
+=head1 fix_html_string
+
+remove newline symbols, leading and trailing whitespaces
+
+=cut
+
+sub fix_html_string {
+    my ( $html_str ) = @_;
+    my $str = $html_str;
+    $str =~ s/[\r\n\t]//g;
+    $str =~ s/^\s+//;
+    $str =~ s/\s+$//;
+    
+    # hack for deleting &nbsp; at flight_num
+    $str =~ s/([A-Z1-9]).(\d{3})/$1 $2/;
+    
+    return $str;
 }
 
 =head1 pairwise

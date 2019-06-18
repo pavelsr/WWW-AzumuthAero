@@ -18,8 +18,5 @@ use Class::Tiny qw(from to date departure arrival flight_num duration fares has_
     
 =cut
 
-# sub date {
-#     return $self->{date};
-# }
 
 1;
