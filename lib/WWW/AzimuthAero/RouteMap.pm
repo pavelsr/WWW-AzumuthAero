@@ -124,14 +124,14 @@ sub route_map_iata {
         ];
     }
     
+    
     if (@cities) {
-        for my $city (keys %$res) {
-           unless ( $city ~~ @cities ) {
-               delete $res->{$city} 
-           }
+        use experimental 'smartmatch';
+        while ( my ( $k, $v ) = each( %$res ) ) {
+            delete $res->{$k} unless ( $k ~~ @cities );
+            @$v = grep { $_ ~~ @cities } @$v;
         }
     }
-    
     
     return $res;
 }

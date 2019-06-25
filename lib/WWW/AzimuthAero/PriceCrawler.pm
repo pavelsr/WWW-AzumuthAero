@@ -23,7 +23,7 @@ See L<WWW::AzimuthAero/new>
 
 Return arrray of hashes with params (from, to, date) for WWW::AzimuthAero::get method
     
-    my @l = $azo_price_crawler->prepare_requests( max_date => '18.12.2019', verbose => 1 );
+    my @l = $azo_price_crawler->prepare_requests( max_date => '18.12.2019', verbose => 1, cities => [ qw/ROV LED/ ] );
 
 In fact, combines L<WWW::AzimuthAero::RouteMap/route_map_iata> and L<WWW::AzimuthAero/get_schedule_dates>
 
@@ -33,20 +33,22 @@ max_date - '%d.%m.%Y' format, if no specified will looks forward for 2 months, d
 
 verbose - print amount of L<WWW::AzimuthAero/get_schedule_dates> requests and future amount of L<WWW::AzimuthAero/get> requests
 
+cities - filter for L<WWW::AzimuthAero::RouteMap/route_map_iata>
+
 =cut
 
 sub prepare_requests {
     my ( $self, %params ) = @_;
 
-    my $iata_map = $self->route_map->route_map_iata;
+    my $iata_map = $self->route_map->route_map_iata($params{cities});
 
     my $n = 0;
     if ( $params{verbose} ) {
-        say 'Cities total: '. scalar keys %$iata_map;
+        say 'Cities total: '. scalar keys %$iata_map if $params{verbose};
         for my $x ( values %$iata_map ) {
             $n += scalar @$x;
         }
-        say 'Amount of WWW::AzimuthAero::get_schedule_dates HTTP requests will be performed: '. $n;
+        say 'Amount of WWW::AzimuthAero::get_schedule_dates HTTP requests will be performed: ' if $params{verbose};
     }
 
     my @get_requests;
@@ -62,8 +64,8 @@ sub prepare_requests {
     }
     
     if ( $params{verbose} ) {
-        say 'Amount of WWW::AzimuthAero::get HTTP requests will be performed: '. scalar @get_requests;
-        say 'Total HTTP requests: ' . $n + scalar @get_requests;
+        say 'Amount of WWW::AzimuthAero::get HTTP requests will be performed: '. scalar @get_requests if $params{verbose};
+        say 'Total HTTP requests: ' . $n + scalar @get_requests if $params{verbose};
     }
     
     return @get_requests;

@@ -161,22 +161,16 @@ sub get_dates_from_range {
 
 }
 
-=head1 filter_dates
-
-    Sort dates ascending
-
-=cut
-
 sub sort_dates {
     my @dates   = @_;
     my $pattern = '%d.%m.%Y';
 
-    return map { $_->dmy('.') }
+    return
+      map { $_->dmy('.') }
       sort { DateTime->compare( $a, $b ) }
-      map {
-        DateTime::Format::Strptime->new( pattern => $pattern )
-          ->parse_datetime($_)
-      } @dates;
+      grep { DateTime->compare( $_, DateTime->now ) >= 0 }
+      map { DateTime::Format::Strptime->new( pattern => $pattern )->parse_datetime($_) } 
+      @dates;
 }
 
 =head1 filter_dates
@@ -193,8 +187,12 @@ sub filter_dates {
     my $pattern = '%d.%m.%Y';
 
     confess "max date is not defined" unless defined $params{max};
+        
     $params{max} = DateTime::Format::Strptime->new( pattern => $pattern )
       ->parse_datetime( $params{max} );
+     
+    carp "max date in past" if ( $params{max} < DateTime->now() );
+    
     $params{min} =
       ( defined $params{min} )
       ? ( DateTime::Format::Strptime->new( pattern => $pattern )
