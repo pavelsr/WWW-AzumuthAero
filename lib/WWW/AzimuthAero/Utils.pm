@@ -39,7 +39,9 @@ our @EXPORT_OK = qw(
 
 our %EXPORT_TAGS = ( 'all' => [@EXPORT_OK] );
 
-=head1 get_next_dow_date
+=head1 FUNCTIONS
+
+=head2 get_next_dow_date
 
 Get next dow-date following by specified date
 
@@ -72,7 +74,7 @@ sub get_next_dow_date_dmy {
     get_next_dow_date( $date, $dow, $pattern )->dmy('.');
 }
 
-=head1 get_dates_from_dows
+=head2 get_dates_from_dows
 
 Get particular dates, based on min_date, max_date and days_of_week
 
@@ -125,6 +127,10 @@ sub get_dates_from_dows {
     return sort_dates(@res);
 }
 
+=head2 get_dates_from_range
+
+=cut
+
 # This method used for filtering dates when no available_to property
 
 sub get_dates_from_range {
@@ -161,6 +167,10 @@ sub get_dates_from_range {
 
 }
 
+=head2 sort_dates
+
+=cut
+
 sub sort_dates {
     my @dates   = @_;
     my $pattern = '%d.%m.%Y';
@@ -173,7 +183,7 @@ sub sort_dates {
       @dates;
 }
 
-=head1 filter_dates
+=head2 filter_dates
 
 Filter dates by max and min dates
 
@@ -207,7 +217,7 @@ sub filter_dates {
       } @$dates;
 }
 
-=head1 extract_js_glob_var
+=head2 extract_js_glob_var
 
 Extract global variable value from JavaScript code
 
@@ -224,7 +234,7 @@ sub extract_js_glob_var {
     return $res;
 }
 
-=head1 fix_html_string
+=head2 fix_html_string
 
 remove newline symbols, leading and trailing whitespaces
 
@@ -243,7 +253,7 @@ sub fix_html_string {
     return $str;
 }
 
-=head1 pairwise
+=head2 pairwise
 
 Transform
 

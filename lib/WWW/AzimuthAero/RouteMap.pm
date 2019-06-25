@@ -4,9 +4,9 @@ package WWW::AzimuthAero::RouteMap;
 
 =head1 SYNOPSIS
 
-    my $az = WWW::AzimuthAero->new();
-    $az->get( from => 'ROV', to => 'LED', date => '14.06.2019' ); 
-    $az->get_lowest_fares( from => 'ROV', to => 'LED', max_date => '14.08.2019' )->print;
+    my $rm = WWW::AzimuthAero::RouteMap->new($route_map_raw_hash);
+    $rm->route_map_iata()
+    
 
 =head1 DESCRIPTION
 
@@ -21,7 +21,9 @@ use WWW::AzimuthAero::Utils qw(:all);
 use Graph;
 use Data::Dumper;
 
-=head1 new
+=head1 METHODS
+
+=head2 new
 
     my $rm = WWW::AzimuthAero::RouteMap->new($route_map_raw_hash);
     
@@ -36,7 +38,7 @@ sub new {
     bless { raw => $rm_raw }, $self;
 }
 
-=head1 new
+=head2 new
 
     Return hash with original route map parsed from site
     
@@ -46,7 +48,7 @@ sub raw {
     return shift->{raw};
 }
 
-=head1 all_cities
+=head2 all_cities
 
 Return sorted list of city names in route map
 
@@ -66,7 +68,7 @@ sub all_cities {
     return sort { lc( $a->{NAME} ) cmp lc( $b->{NAME} ) } @res;
 }
 
-=head1 get
+=head2 get
 
 Universal accessor function for route map, wrapper under L<WWW::AzimuthAero::RouteMap/all_cities>
 
@@ -91,7 +93,7 @@ sub get_iata_by_azo {
     return $self->raw->{$azo_code}{IATA};
 }
 
-=head1 route_map_iata
+=head2 route_map_iata
 
 Return hash with IATA route map
 
@@ -136,7 +138,7 @@ sub route_map_iata {
     return $res;
 }
 
-=head1 neighbor_airports
+=head2 neighbor_airports
 
 Return hash of airports that are no more than 4 hours by train from each other 
 
@@ -164,7 +166,7 @@ sub neighbor_airports {
     };
 }
 
-=head1 get_neighbor_airports_iata
+=head2 get_neighbor_airports_iata
 
 Return list of IATA codes of neighbor airports based on L<WWW::AzimuthAero::RouteMap/neighbor_airports>
 
@@ -180,7 +182,7 @@ sub get_neighbor_airports_iata {
     
 }
 
-=head1 transfer_routes
+=head2 transfer_routes
 
 Convert route map to L<Graph> object and return ARRAYref of routes with one transfer maximum
 

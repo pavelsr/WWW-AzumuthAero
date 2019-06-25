@@ -95,13 +95,13 @@ subtest 'as_string' => sub {
 
     is(
         $flight->as_string,
-        '21:45 19:45 15.10.2019 A4 231 ROV VOG',
+        '21:45 19:45 888 15.10.2019 A4 231 ROV VOG',
         'as_string is sorting alphabetically by default'
     );
     
     is(
         $flight->as_string( order => [ qw/flight_date flight_num/ ] ),
-        '15.10.2019 A4 231 21:45 19:45 ROV VOG',
+        '15.10.2019 A4 231 21:45 19:45 888 ROV VOG',
         'order param is working fine'
     );        
 };

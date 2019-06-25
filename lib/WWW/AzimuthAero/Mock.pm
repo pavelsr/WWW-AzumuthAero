@@ -16,7 +16,7 @@ use DateTime;
 use Mojo::UserAgent::Mockable;
 use feature 'say';
 
-=head1 mock_data
+=head2 mock_data
 
 Return data that is used for mock at unit tests
 
@@ -35,6 +35,12 @@ sub mock_data {
 sub filename {
     return 't/ua_mock.json';
 }
+
+=head2 generate
+
+Generate json mock data
+
+=cut
 
 sub generate {
     my $self = shift;

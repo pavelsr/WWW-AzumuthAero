@@ -14,12 +14,14 @@ use feature 'say';
 =head1 DESCRIPTION
 
     Wrappper under L<WWW::AzimuthAero>
+    
+=head1 METHODS
 
-=head1 new
+=head2 new
 
 See L<WWW::AzimuthAero/new>
 
-=head1 prepare_requests
+=head2 prepare_requests
 
 Return arrray of hashes with params (from, to, date) for WWW::AzimuthAero::get method
     
@@ -27,7 +29,7 @@ Return arrray of hashes with params (from, to, date) for WWW::AzimuthAero::get m
 
 In fact, combines L<WWW::AzimuthAero::RouteMap/route_map_iata> and L<WWW::AzimuthAero/get_schedule_dates>
 
-=head2 Params
+=head3 Params
 
 max_date - '%d.%m.%Y' format, if no specified will looks forward for 2 months, default max_date of L<WWW::AzimuthAero/get_schedule_dates>
 

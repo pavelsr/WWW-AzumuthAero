@@ -47,7 +47,9 @@ How to generate DOM samples for unit tests after git clone:
 
 See L<WWW::AzimuthAero::Mock> and L<Mojo::UserAgent::Mockable> for more details
 
-API urls that modules uses:
+=head2 API endpoints
+
+urls that modules uses:
 
 L<https://booking.azimuth.aero/> (for fetching route map and initialize session)
 
@@ -57,11 +59,9 @@ L<https://booking.azimuth.aero/!/ROV/LED/19.06.2019/1-0-0/> (for fetching prices
 
 =head1 TO-DO
 
-+ implement find_transits
++ implement find_transits at L<WWW::AzimuthAero/get_lowest_fares>
 
-+ Checking more than 1 transfer
-
-+ debug output of L<WWW::AzimuthAero/get_fares_schedule> and others
++ implement check_tickets at L<WWW::AzimuthAero/get>
 
 =cut
 
@@ -122,6 +122,13 @@ Checks for flight between two cities on selected date.
 Cities are specified as IATA codes.
 
     $az->get( from => 'ROV', to => 'LED', date => '04.06.2019' );
+    $az->get( from => 'ROV', to => 'LED', date => '04.06.2019', check_tickets => 1 );
+
+You can also set adults params, from 1 to 9, and check_tickets (auto check with adults from 9 to 1)
+
+Those params may be convenient for monitoring tickets availability.
+
+WARN: check_tickets is not implemented yet
 
 Return ARRAYref with L<WWW::AzimuthAero::Flight> objects or hash with error like 
 
@@ -138,13 +145,17 @@ sub get {
     confess "from is not defined" unless defined $params{from};
     confess "to is not defined"   unless defined $params{to};
     confess "date is not defined" unless defined $params{date};
+    confess "date is not defined" unless defined $params{date};
+    confess "adults > 9" if ( $params{adults} > 9 );
 
+    $params{adults} = 1 unless defined $params{adults};
+    
     my $url =
         'https://booking.azimuth.aero/!/'
       . $params{from} . '/'
       . $params{to} . '/'
       . $params{date}
-      . '/1-0-0/';
+      . '/'.$params{adults}.'-0-0/';
     my $req        = $self->{ua}->get($url);
     my $target_dom = $req->res->dom->at('div.sf-day__content');
 
@@ -428,7 +439,7 @@ sub get_fares_schedule {
 
 Wrapper for L<WWW::AzimuthAero/get_fares_schedule>
 
-Main difference that it sort flights by price and can also checks transits
+Main difference that it sort flights by price and can also checks neighbor airports
 
 Get lowest fares between selected cities. Cities are specified as IATA codes.
 
@@ -459,7 +470,7 @@ sub get_lowest_fares {
           $self->route_map->get_neighbor_airports_iata( $params{to} );
 
         # say 'Will check neighbor airports also : '.join("\t",@from_neighbors,@to_neighbors) if ($params{progress_bar});
-        say '== neighbours : ' . join( " ", @from_neighbors, @to_neighbors );
+        # say '== neighbours : ' . join( " ", @from_neighbors, @to_neighbors );
 
         for my $from2 (@from_neighbors) {
 

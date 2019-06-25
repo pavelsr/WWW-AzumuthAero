@@ -31,13 +31,17 @@ use List::Compare;
 
 =head1 DESCRIPTION
 
-    Object representation of data on pages like https://booking.azimuth.aero/!/ROV/LED/21.06.2019/1-0-0/
+Object representation of data on pages like L<https://booking.azimuth.aero/!/ROV/LED/21.06.2019/1-0-0/>
 
-=head1 new
+=head1 METHODS
+
+=head2 new
 
     my $az = WWW::AzimuthAero::Flight->new(date => '16.06.2019', from => 'ROV', to => 'KLF');
     
-=head1 from_city
+=head1 PROPERTIES
+
+=head2 from_city
 
 Departure city IATA code
 
@@ -45,7 +49,7 @@ Example:
 
     LED
 
-=head1 to_city
+=head2 to_city
 
 Arrival city IATA code
 
@@ -53,7 +57,7 @@ Example:
 
     ROV
 
-=head1 flight_num
+=head2 flight_num
 
 Return string with flight number
 
@@ -61,7 +65,7 @@ Example:
     
     A4 203
 
-=head1 flight_date
+=head2 flight_date
 
 String in %d.%m.%Y format
 
@@ -69,25 +73,25 @@ Example:
 
     24.06.2019
 
-=head1 departure_time
+=head2 departure_time
 
 Example: 
 
     07:20
 
-=head1 arrival_time
+=head2 arrival_time
 
 Example:
     
     10:00
 
-=head1 trip_duration
+=head2 trip_duration
 
 Example:
 
     5ч 35м
 
-=head1 fares
+=head2 fares
 
 Contain hash with different tariffs
 
@@ -103,17 +107,17 @@ Possible keys are
     
 lowest key always contains lowest price
 
-=head1 has_stops
+=head2 has_stops
 
 Return true if flight consist of two flights
 
 Like at L<https://booking.azimuth.aero/!/ROV/PKV/26.06.2019/1-0-0/>
 
-=head1 stop_at_city
+=head2 stop_at_city
 
 Return IATA code of transit city
 
-=head1 as_hashref
+=head2 as_hashref
 
 Return particular properties as hash
     
@@ -162,7 +166,7 @@ sub as_hashref {
     return $result;
 }
 
-=head1 as_string
+=head2 as_string
 
 Return flight info as string
 
@@ -199,23 +203,23 @@ sub as_string {
     my @str = ();
     if ( $params{order} ) {
         for my $k ( @{ $params{order} } ) {
-            push @str, $hash->{fares}{lowest} if ( $k eq 'fares' );
             push @str, $hash->{$k} if ( ref($hash->{$k}) eq '' );
+            push @str, $hash->{fares}{lowest} if ( $k eq 'fares' );
         }
         
         my $lc = List::Compare->new( $params{order}, [ keys %$hash ] );
         my @Ronly = $lc->get_Ronly;
         for my $k ( @Ronly ) {
-            push @str, $hash->{fares}{lowest} if ( $k eq 'fares' );
             push @str, $hash->{$k} if ( ref($hash->{$k}) eq '' );
+            push @str, $hash->{fares}{lowest} if ( $k eq 'fares' );
         }
         
         # compare diff and push others
     }
     else {
         for my $k ( sort keys %$hash ) {
-            push @str, $hash->{fares}{lowest} if ( $k eq 'fares' );
             push @str, $hash->{$k} if ( ref($hash->{$k}) eq '' );
+            push @str, $hash->{fares}{lowest} if ( $k eq 'fares' );
         }
     }
     
