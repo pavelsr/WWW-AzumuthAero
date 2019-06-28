@@ -146,9 +146,9 @@ sub get {
     confess "to is not defined"   unless defined $params{to};
     confess "date is not defined" unless defined $params{date};
     confess "date is not defined" unless defined $params{date};
-    confess "adults > 9" if ( $params{adults} > 9 );
 
     $params{adults} = 1 unless defined $params{adults};
+    confess "adults > 9" if ( defined $params{adults} && ( $params{adults} > 9 ) );
     
     my $url =
         'https://booking.azimuth.aero/!/'

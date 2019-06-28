@@ -4,7 +4,7 @@ WWW::AzimuthAero - Parser for https://azimuth.aero/
 
 # VERSION
 
-version 0.3
+version 0.31
 
 # SYNOPSIS
 
